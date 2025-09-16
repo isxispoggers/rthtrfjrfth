@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>@s</title>
+<link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@500;700&display=swap" rel="stylesheet">
+
+<style>
+:root {
+  --bg: #000;
+  --muted: #bdbdbd;
+  --uid-bg: #111;
+  --red-glow: rgba(255, 0, 0, 0.4);
+  --box-bg: rgba(0,0,0,0.5);
+}
+
+* { margin:0; padding:0; box-sizing:border-box; }
+body, html { height:100%; font-family:'Quicksand', sans-serif; overflow:hidden; background:var(--bg); color:#fff; display:flex; justify-content:center; align-items:center; }
+
+#intro { position:fixed; inset:0; display:flex; align-items:center; justify-content:center; cursor:pointer; background: rgba(0,0,0,1); z-index:200; opacity:1; transition: opacity 1s ease; }
+#intro h1 { font-size:22px; color:red; animation:pulse 1.6s infinite; }
+@keyframes pulse {0%,100%{opacity:.45} 50%{opacity:1}}
+
+canvas#snow { position:fixed; top:0; left:0; width:100%; height:100%; pointer-events:none; z-index:0; }
+
+#main { display:none; position:relative; z-index:1; display:flex; flex-direction:column; align-items:center; justify-content:center; opacity:0; transition: opacity 1s ease; }
+
+.profile-box {
+  display:flex; flex-direction:column; align-items:center; gap:20px; width:260px;
+  background: var(--box-bg); backdrop-filter: blur(12px); border-radius:20px; padding:20px;
+}
+
+.avatar { width:90px; height:90px; border-radius:50%; overflow:hidden; background:linear-gradient(180deg,#222,#111); display:flex; justify-content:center; align-items:center; box-shadow:0 6px 18px rgba(0,0,0,0.7); }
+.avatar img { width:100%; height:100%; object-fit:cover; }
+
+.meta { display:flex; flex-direction:column; align-items:center; gap:8px; width:100%; }
+
+.name-row { display:flex; flex-direction:column; align-items:center; gap:6px; position:relative; }
+.username { font-size:22px; font-weight:700; cursor:pointer; user-select:none; color:#fff; }
+.uid { font-family:'Quicksand', sans-serif; font-weight:500; font-size:14px; padding:4px 10px; border-radius:8px; background:var(--uid-bg); color:#fff; white-space:nowrap; text-align:center;
+  opacity:0; transition: opacity .25s ease, transform .25s ease, text-shadow .25s ease;
+  position:absolute; bottom:120%; left:50%; transform:translateX(-50%);
+  text-shadow: 0 0 6px red, 0 0 10px rgba(255,0,0,0.6);
+}
+.username:hover + .uid, .uid:hover { opacity:1; transform:translateX(-50%) translateY(-4px); }
+
+.bio { font-size:14px; color:var(--muted); text-align:center; min-height:20px; overflow:hidden; white-space:nowrap; position:relative; }
+.bio::after { content:''; width:1px; height:1.1em; background:#fff; margin-left:6px; display:inline-block; animation: blink 1s steps(1,end) infinite; opacity:.95; }
+@keyframes blink {50%{opacity:0}}
+
+.music-player { display:flex; flex-direction:column; align-items:center; gap:12px; width:100%; margin-top:10px; }
+.cover { width:150px; height:150px; border-radius:16px; overflow:hidden; box-shadow:0 0 16px var(--red-glow); transition: transform .3s ease, box-shadow .3s ease; }
+.cover img { width:100%; height:100%; object-fit:cover; }
+.cover:hover { transform:scale(1.05); box-shadow:0 0 24px var(--red-glow); }
+.song-name { font-size:16px; font-weight:700; color:#fff; text-align:center; transition:opacity .5s ease; }
+.song-author { font-size:13px; color:#bbb; text-align:center; transition:opacity .5s ease; }
+.audio-controls { display:flex; align-items:center; gap:10px; margin-top:6px; width:100%; justify-content:center; }
+.audio-controls button { background:none; border:none; color:#fff; cursor:pointer; font-size:18px; transition:transform .2s ease; }
+.audio-controls button:hover { transform:scale(1.2); color:red; }
+.progress-container { width:100%; height:6px; background:rgba(255,255,255,0.2); border-radius:3px; cursor:pointer; margin-top:6px; }
+.progress { width:0%; height:100%; background:red; border-radius:3px; transition:width .2s linear; }
+
+</style>
+</head>
+<body>
+
+<div id="intro"><h1>click</h1></div>
+<canvas id="snow"></canvas>
+
+<main id="main">
+  <div class="profile-box">
+    <div class="avatar">
+      <img src="images/avatar.png" alt="avatar">
+    </div>
+    <div class="meta">
+      <div class="name-row">
+        <div class="username">s</div>
+        <div class="uid">UID 6</div>
+      </div>
+      <div class="bio" id="bio"></div>
+
+      <div class="music-player">
+        <div class="cover"><img id="cover-img" src="covers/song.png" alt="cover"></div>
+        <div class="song-name" id="song-name">ugly as fuck and forever alone</div>
+        <div class="song-author" id="song-author">wifiskeleton</div>
+        <audio id="audio" preload="auto"></audio>
+        <div class="audio-controls">
+          <button id="prev">⏮</button>
+          <button id="play">▶</button>
+          <button id="next">⏭</button>
+        </div>
+        <div class="progress-container"><div class="progress" id="progress"></div></div>
+      </div>
+
+    </div>
+  </div>
+</main>
+
+<script>
+// BIO typing
+const bioElement = document.getElementById('bio');
+const bioTexts = [
+  'ugly as fuck and forever alone',
+  'lonely afterparty on all platforms'
+];
+let bioI = 0, bioChar = 0, bioDeleting = false;
+function typeBio(){
+  const txt = bioTexts[bioI];
+  if(!bioDeleting){
+    bioChar++;
+    bioElement.textContent = txt.substring(0, bioChar);
+    if(bioChar === txt.length){ bioDeleting = true; setTimeout(typeBio, 1200); return; }
+  } else {
+    bioChar--;
+    bioElement.textContent = txt.substring(0, bioChar);
+    if(bioChar === 0){ bioDeleting = false; bioI = (bioI+1) % bioTexts.length; }
+  }
+  setTimeout(typeBio, bioDeleting ? 35 : 120);
+}
+
+// Red particle effect
+const canvas = document.getElementById('snow');
+const ctx = canvas.getContext('2d', {alpha:true});
+let particles = [];
+function resize(){ const dpr = window.devicePixelRatio || 1; canvas.width = window.innerWidth*dpr; canvas.height = window.innerHeight*dpr; ctx.setTransform(dpr,0,0,dpr,0,0);}
+window.addEventListener('resize', resize); resize();
+function createParticles(count=150){ 
+  particles = []; 
+  for(let i=0;i<count;i++){
+    particles.push({x:Math.random()*window.innerWidth,y:Math.random()*window.innerHeight,r:Math.random()*1.5+0.5,d:Math.random()*0.5+0.1,sway:Math.random()*100});
+  }
+}
+createParticles(150);
+function drawParticles(){ 
+  ctx.clearRect(0,0,canvas.width,canvas.height); 
+  ctx.fillStyle='rgba(255,0,0,0.8)'; 
+  ctx.beginPath(); 
+  for(let p of particles){ ctx.moveTo(p.x,p.y); ctx.arc(p.x,p.y,p.r,0,Math.PI*2);} 
+  ctx.fill(); 
+  updateParticles();
+}
+function updateParticles(){ 
+  for(let p of particles){ 
+    p.y += Math.pow(p.d,1.5)*0.5; 
+    p.x += Math.sin(p.sway)*0.2; 
+    if(p.y > window.innerHeight+10){ p.y=-10; p.x=Math.random()*window.innerWidth;} 
+    if(p.x<-20) p.x=window.innerWidth+20; 
+    if(p.x>window.innerWidth+20) p.x=-20;
+  } 
+}
+function animateParticles(){ drawParticles(); requestAnimationFrame(animateParticles);}
+animateParticles();
+window.addEventListener('resize', ()=>{ createParticles(Math.max(100,Math.floor(window.innerWidth/6))); });
+
+// Music
+const songs = [
+  { src:'sounds/song.mp3', cover:'covers/song.png', name:'ugly as fuck and forever alone', author:'wifiskeleton' }
+];
+let songIndex = 0;
+const audio = document.getElementById('audio');
+const playBtn = document.getElementById('play');
+const nextBtn = document.getElementById('next');
+const prevBtn = document.getElementById('prev');
+const coverImg = document.getElementById('cover-img');
+const songName = document.getElementById('song-name');
+const songAuthor = document.getElementById('song-author');
+const progress = document.getElementById('progress');
+
+function loadSong(i){
+  coverImg.style.opacity=0;
+  songName.style.opacity=0;
+  songAuthor.style.opacity=0;
+  audio.pause();
+  audio.src=songs[i].src;
+  audio.currentTime=0;
+  audio.volume=0.8;
+  setTimeout(()=>{
+    audio.play().then(()=>{ playBtn.textContent='⏸'; });
+    coverImg.src=songs[i].cover;
+    songName.textContent=songs[i].name;
+    songAuthor.textContent=songs[i].author;
+    coverImg.style.transition='opacity 0.8s ease';
+    songName.style.transition='opacity 0.8s ease';
+    songAuthor.style.transition='opacity 0.8s ease';
+    coverImg.style.opacity=1;
+    songName.style.opacity=1;
+    songAuthor.style.opacity=1;
+  },500);
+}
+
+function playPauseSong(){ if(audio.paused){ audio.play(); playBtn.textContent='⏸'; } else { audio.pause(); playBtn.textContent='▶'; } }
+
+playBtn.addEventListener('click', playPauseSong);
+nextBtn.addEventListener('click', ()=>loadSong(songIndex));
+prevBtn.addEventListener('click', ()=>loadSong(songIndex));
+
+audio.addEventListener('timeupdate', ()=>{
+  if(audio.duration) progress.style.width = (audio.currentTime/audio.duration*100)+'%';
+});
+
+progress.parentElement.addEventListener('click', e=>{
+  const rect=e.target.getBoundingClientRect();
+  const x=e.clientX-rect.left;
+  audio.currentTime = (x/rect.width)*audio.duration;
+  progress.style.width = (x/rect.width*100)+'%';
+});
+
+// Intro fade
+const intro = document.getElementById('intro');
+const main = document.getElementById('main');
+let introClicked = false;
+
+intro.addEventListener('click', ()=>{
+  if(introClicked) return;
+  introClicked = true;
+  intro.style.opacity = 0;
+  setTimeout(()=>{
+    intro.style.display='none';
+    main.style.display='flex';
+    setTimeout(()=>{ main.style.opacity = 1; }, 50);
+    typeBio();
+    loadSong(songIndex);
+  },1000);
+});
+</script>
+
+</body>
+</html>

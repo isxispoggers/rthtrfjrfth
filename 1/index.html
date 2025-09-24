@@ -1,0 +1,257 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>@s_s</title>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@600;700&family=Fira+Code:wght@400;600&display=swap" rel="stylesheet">
+
+  <style>
+    :root{
+      --bg: #000;
+      --fg: #fff;
+      --muted: #aaa;
+      --cursor: #ffffff;
+      --glow: 0 0 12px rgba(255,255,255,0.65), 0 0 28px rgba(255,255,255,0.25);
+    }
+
+    html,body{height:100%;margin:0;background:var(--bg);color:var(--fg);font-family:Poppins,system-ui,sans-serif}
+    body { cursor: none; overflow: hidden; }
+
+    .cursor-dot{
+      position:fixed;top:0;left:0;width:10px;height:10px;border-radius:50%;
+      background:var(--cursor);pointer-events:none;z-index:9999;
+      transform:translate(-50%,-50%);
+      box-shadow:0 0 10px rgba(255,255,255,0.65), 0 0 28px rgba(255,255,255,0.18);
+      transition:transform .06s linear;
+    }
+
+    /* Intro / CMD */
+    .intro{position:fixed;inset:0;display:grid;place-items:center;z-index:60;background:#000;transition:opacity .7s ease, visibility .7s;}
+    .intro.hidden{opacity:0;visibility:hidden;pointer-events:none}
+    .start-text{font-weight:600;font-size:18px;color:#fff;animation:glowPulse 1.9s infinite ease-in-out;}
+    @keyframes glowPulse{0%{text-shadow:0 0 0 rgba(255,255,255,.05);}50%{text-shadow:0 0 18px rgba(255,255,255,.35);}100%{text-shadow:0 0 0 rgba(255,255,255,.05);}}
+
+    .computer-wrap{height:100vh;display:flex;align-items:center;justify-content:center;padding:32px}
+    .monitor{width:86vw;max-width:1100px;height:66vh;max-height:720px;border-radius:10px;overflow:hidden;background:#000;border:1px solid rgba(255,255,255,0.04);box-shadow:0 30px 90px rgba(0,0,0,0.9);display:flex;flex-direction:column;transform:scale(.98);opacity:0;transition:all .6s ease;}
+    .monitor.visible{transform:scale(1);opacity:1}
+    .bezel{height:36px;display:flex;align-items:center;justify-content:space-between;padding:0 12px;background:#0e0e0e;color:var(--muted);font-family:'Fira Code',monospace;font-size:13px;}
+    .bezel-title{color:#bfc7c7;font-weight:600}
+    .bezel-controls{display:flex;gap:12px;}
+    .bezel-controls span{width:16px;height:16px;border-radius:50%;display:inline-block;}
+    .bezel-controls .min{background:#f1c40f;}
+    .bezel-controls .max{background:#2ecc71;}
+    .bezel-controls .close{background:#e74c3c;}
+    .screen{flex:1;padding:20px;color:#fff;font-family:'Fira Code',monospace;font-size:13.8px;line-height:1.48;overflow:auto;position:relative;text-shadow:0 0 6px rgba(255,255,255,0.22);}
+    .line{white-space:pre-wrap;opacity:0;transform:translateY(6px);transition:all .12s ease;}
+    .prefix{color:#9fffd6;font-weight:600;margin-right:6px}
+    .drv{color:#cfeee2;opacity:.95;}
+    .ok{color:#b0ffcf;}
+    .fail{color:#ff7b7b;}
+
+    /* Main page */
+    .main{display:none;min-height:100vh;position:relative;z-index:20;display:flex;align-items:center;justify-content:center;flex-direction:column;}
+    .main.visible{display:flex;animation:fadeInMain 1s ease;}
+    @keyframes fadeInMain{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+
+    /* Snow */
+    .snowflake{position:fixed;top:-10px;color:white;font-size:3.5px;opacity:.45;pointer-events:none;animation:fall linear infinite;}
+    @keyframes fall{to{transform:translateY(110vh)}}
+
+    /* Avatar + bio */
+    .biolink-wrap{display:flex;flex-direction:column;align-items:center;text-align:center;position:relative;}
+    .avatar{width:80px;height:80px;border-radius:50%;overflow:hidden;margin-bottom:12px;box-shadow:0 0 15px rgba(255,255,255,0.2);}
+    .avatar img{width:100%;height:100%;object-fit:cover;}
+    
+    /* UID box above username */
+    .uid-box {
+      position: absolute;
+      bottom: 100%;
+      left: 50%;
+      transform: translateX(-50%) translateY(-8px);
+      padding: 4px 10px;
+      border: 1px solid #fff;
+      border-radius: 6px;
+      color: #fff;
+      font-size: 12px;
+      background: rgba(0,0,0,0.7);
+      text-align: center;
+      text-shadow: 0 0 6px rgba(255,255,255,0.4);
+      box-shadow: 0 0 10px rgba(255,255,255,0.4);
+      opacity: 0;
+      pointer-events: none;
+      white-space: nowrap;
+      transition: opacity 0.3s ease, transform 0.3s ease;
+    }
+
+    .username {
+      font-weight: 700;
+      font-size: 28px;
+      color: #fff;
+      text-shadow: var(--glow);
+      transition: 0.3s ease;
+    }
+    .username:hover .uid-box {
+      opacity: 1;
+      transform: translateX(-50%) translateY(-14px);
+    }
+
+    .tagline{color:var(--muted);font-size:15px;margin-top:12px;font-family:'Fira Code',monospace;}
+
+    /* Music Player */
+    .player {
+      margin-top: 28px;
+      background: rgba(15,15,15,0.15);
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(255,255,255,0.05);
+      border-radius: 14px;
+      padding: 14px 18px;
+      display: flex;
+      flex-direction: column;
+      width: 90%;
+      max-width: 500px;
+      box-shadow: 0 0 20px rgba(255,255,255,0.05);
+    }
+
+    .info-row {display: flex; align-items: center; justify-content: space-between; width: 100%;}
+    .cover {width: 42px; height: 42px; border-radius: 6px; overflow: hidden; margin-right: 14px; flex-shrink: 0;}
+    .cover img {width:100%;height:100%;object-fit:cover;}
+    .song-details {display: flex; flex-direction: column; font-size: 14px; flex: 1;}
+    .song-title {font-weight: 600; color: #fff;}
+    .song-artist {color: var(--muted); font-size: 12px;}
+    .controls {display: flex; gap: 12px;}
+    .controls button {
+      background: transparent;
+      border: none;
+      color: #fff;
+      font-size: 18px;
+      cursor: none;
+      transition: 0.25s;
+    }
+    .controls button:hover {color: #00ff9f; transform: scale(1.15);}
+    .progress-wrap {margin-top: 10px; display: flex; align-items: center; gap: 8px; width: 100%; font-size: 11px; color: var(--muted);}
+    .progress {flex: 1; appearance: none; height: 4px; border-radius: 4px; background: #444; cursor: pointer;}
+    .progress::-webkit-slider-thumb {appearance: none; width: 10px; height: 10px; border-radius: 50%; background: #fff; cursor: pointer;}
+  </style>
+</head>
+<body>
+  <div class="cursor-dot" id="cursorDot"></div>
+
+  <div class="intro" id="intro"><div class="start-text">click 2 start</div></div>
+
+  <div class="computer-wrap" id="computerWrap">
+    <div class="monitor" id="monitor">
+      <div class="bezel">
+        <div class="bezel-title">CMD</div>
+        <div class="bezel-controls"><span class="min"></span><span class="max"></span><span class="close"></span></div>
+      </div>
+      <div class="screen" id="terminal"></div>
+    </div>
+  </div>
+
+  <main class="main" id="mainPage">
+    <div class="biolink-wrap">
+      <div class="avatar"><img src="avatar.png" alt="avatar"></div>
+      <div class="uid-box">UID 1</div>
+      <div class="username">s_s</div>
+      <div class="tagline" id="tagline"></div>
+    </div>
+
+    <!-- Music Player -->
+    <div class="player">
+      <div class="info-row">
+        <div class="cover"><img src="cover.png" alt="cover"></div>
+        <div class="song-details">
+          <div class="song-title">#GETMERKD</div>
+          <div class="song-artist">retryingmylife, Koffin</div>
+        </div>
+        <div class="controls">
+          <button id="backward">⏮</button>
+          <button id="playPause">▶</button>
+          <button id="forward">⏭</button>
+        </div>
+      </div>
+      <div class="progress-wrap">
+        <span id="currentTime">0:00</span>
+        <input type="range" id="progress" class="progress" value="0" min="0" step="1">
+        <span id="duration">0:00</span>
+      </div>
+    </div>
+  </main>
+
+<script>
+/* Cursor */
+const cursorDot = document.getElementById('cursorDot');
+window.addEventListener('mousemove', e => { cursorDot.style.left = e.clientX+'px'; cursorDot.style.top = e.clientY+'px'; });
+
+/* Snow */
+function createSnowflake(){const snow=document.createElement('div');snow.className='snowflake';snow.textContent='❄';snow.style.left=Math.random()*100+'vw';snow.style.animationDuration=(10+Math.random()*8)+'s';document.body.appendChild(snow);setTimeout(()=>snow.remove(),18000);}
+function startSnow(){setInterval(createSnowflake,600);}
+
+/* Music Player */
+const audio = new Audio("song.mp3");
+audio.loop = true;
+const playPause = document.getElementById('playPause');
+const progress = document.getElementById('progress');
+const currentTimeEl = document.getElementById('currentTime');
+const durationEl = document.getElementById('duration');
+const backward = document.getElementById('backward');
+const forward = document.getElementById('forward');
+function formatTime(sec){const m=Math.floor(sec/60);const s=Math.floor(sec%60).toString().padStart(2,'0');return `${m}:${s}`;}
+audio.addEventListener('loadedmetadata',()=>{progress.max=Math.floor(audio.duration);durationEl.textContent=formatTime(audio.duration);});
+audio.addEventListener('timeupdate',()=>{progress.value=Math.floor(audio.currentTime);currentTimeEl.textContent=formatTime(audio.currentTime);});
+progress.addEventListener('input',()=>{audio.currentTime=progress.value;});
+playPause.addEventListener('click',()=>{if(audio.paused){audio.play();playPause.textContent='⏸';}else{audio.pause();playPause.textContent='▶';}});
+backward.addEventListener('click',()=>{audio.currentTime=Math.max(0,audio.currentTime-10);});
+forward.addEventListener('click',()=>{audio.currentTime=Math.min(audio.duration,audio.currentTime+10);});
+
+/* Terminal helpers */
+const sleep = ms => new Promise(r => setTimeout(r,ms));
+const terminal = document.getElementById('terminal');
+function appendLineNode(prefix='',cls=''){const el=document.createElement('div');if(prefix){const p=document.createElement('span');p.className='prefix';p.textContent=prefix;el.appendChild(p);}const span=document.createElement('span');if(cls) span.className=cls;el.appendChild(span);el.className='line';terminal.appendChild(el);terminal.scrollTop=terminal.scrollHeight;return {el,textNode:span};}
+async function typeText(span,text,speed=18){for(let i=0;i<=text.length;i++){span.textContent=text.slice(0,i);terminal.scrollTop=terminal.scrollHeight;await sleep(speed+Math.random()*6);}span.parentElement.style.opacity=1;span.parentElement.style.transform='none';}
+async function loadingBar(_,label='Loading',blocks=28,speed=70){const {el,textNode}=appendLineNode('','');for(let i=0;i<=blocks;i++){const pct=Math.floor((i/blocks)*100).toString().padStart(3,' ');textNode.textContent=`${label} [${'█'.repeat(i)}${'░'.repeat(blocks-i)}] ${pct}%`;terminal.scrollTop=terminal.scrollHeight;await sleep(speed+Math.random()*(speed*0.4));}el.style.opacity=1;el.style.transform='none';}
+
+/* Full CMD Scan */
+async function runScanSequence(){
+  const l1=appendLineNode('root@biolink:~$','');await typeText(l1.textNode,' booting secure-scan v1.0.3',16);await sleep(220);
+  await loadingBar(terminal,'Loading kernel modules',30,60);await sleep(180);
+  for(const d of [{name:'Audio Driver',status:'OK'},{name:'GPU Driver',status:'OK'},{name:'Network Driver',status:'OK'},{name:'USB Controller',status:'OK'},{name:'Camera',status:'MISSING'},{name:'Fingerprint',status:'MISSING'}]){
+    const {textNode}=appendLineNode('[drv] ','drv');const cls=(d.status==='OK')?'ok':'fail';await typeText(textNode,`${d.name} ........ ${d.status}`,20);textNode.classList.add(cls);await sleep(140+Math.random()*140);}
+  await sleep(260);
+  const netIntro=appendLineNode('[net] ','' );await typeText(netIntro.textNode,'Detecting network interfaces...',18);await sleep(200);
+  const ipLine=appendLineNode('[net] ','' );await typeText(ipLine.textNode,'Querying public IP...',18);
+  let ipinfo={ip:'0.0.0.0',city:'Unknown',region:'Unknown',country_name:'Unknown',org:'Unknown'};
+  try{const r=await fetch('https://ipapi.co/json/',{cache:'no-store'});if(r.ok) ipinfo=await r.json();}catch{}
+  await sleep(220);
+  for(const item of [
+    {label:'Public IP',value:ipinfo.ip},
+    {label:'City',value:ipinfo.city},
+    {label:'Region',value:ipinfo.region||ipinfo.region_name},
+    {label:'Country',value:ipinfo.country_name||ipinfo.country},
+    {label:'ISP/Org',value:ipinfo.org||ipinfo.isp}
+  ]){const {textNode}=appendLineNode('[net] ','' );await typeText(textNode,`${item.label}: ${item.value||'Unknown'}`,20);await sleep(140);}
+  await sleep(260);
+  const secIntro=appendLineNode('[sec] ','' );await typeText(secIntro.textNode,'Running quick vulnerability checks...',18);await sleep(160);
+  for(const c of [{msg:'Port scan',result:'SAFE'},{msg:'DNS leak test',result:'OK'},{msg:'Firewall status',result:'ACTIVE'}]){
+    const {textNode}=appendLineNode('[sec] ','' );await typeText(textNode,` - ${c.msg} ........ ${c.result}`,18);await sleep(140);}
+  await sleep(300);
+  const finish=appendLineNode('[sys] ','' );await typeText(finish.textNode,'Scan complete. Loading website..',20);await sleep(700);
+}
+
+/* Sequence */
+const intro=document.getElementById('intro');
+const monitor=document.getElementById('monitor');
+const computerWrap=document.getElementById('computerWrap');
+const mainPage=document.getElementById('mainPage');
+intro.addEventListener('click',startSequence);
+async function startSequence(){
+  intro.classList.add('hidden');await sleep(560);intro.remove();
+  monitor.classList.add('visible');await runScanSequence();
+  monitor.style.opacity='0';monitor.style.transform='scale(.98)';await sleep(700);
+  computerWrap.remove();mainPage.classList.add('visible');
+  startSnow();audio.play();playPause.textContent='⏸';
+}
+</script>
+</body>
+</html>

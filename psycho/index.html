@@ -78,6 +78,45 @@ canvas#snow { position:fixed; top:0; left:0; width:100%; height:100%; pointer-ev
 }
 .username:hover + .uid, .uid:hover { opacity:1; transform:translateX(-50%) translateY(-4px); }
 
+/* Bio with typewriter */
+.bio {
+  font-family: var(--font-sans);
+  font-size:14px;
+  font-weight:400;
+  color:var(--muted);
+  text-align:center;
+  white-space:nowrap;
+  overflow:hidden;
+  display:inline-block;
+  margin-top:2px;
+}
+.bio::after {
+  content:'|';
+  display:inline-block;
+  margin-left:2px;
+  color:var(--accent);
+  animation: blink 0.7s step-end infinite;
+  font-size:14px;
+}
+@keyframes blink { 50% { opacity:0; } }
+
+/* Discord Icon */
+.discord-link {
+  display:inline-block;
+  margin-top:12px;
+}
+.discord-link img {
+  width:50px;
+  height:50px;
+  transition: transform 0.3s ease, filter 0.3s ease;
+  cursor:pointer;
+}
+.discord-link img:hover {
+  transform: scale(1.25) rotate(10deg);
+  filter: drop-shadow(0 0 6px var(--accent));
+}
+
+/* Music Player */
 .music-player { display:flex; flex-direction:column; align-items:center; gap:12px; width:100%; margin-top:10px; }
 .cover { width:150px; height:150px; border-radius:16px; overflow:hidden; box-shadow:0 0 16px var(--grey-glow); transition: transform .3s ease, box-shadow .3s ease; }
 .cover img { width:100%; height:100%; object-fit:cover; }
@@ -108,6 +147,9 @@ canvas#snow { position:fixed; top:0; left:0; width:100%; height:100%; pointer-ev
         <div class="uid">UID 7</div>
       </div>
 
+      <!-- Bio "psychopath" -->
+      <div class="bio" id="bio"></div>
+
       <div class="music-player">
         <div class="cover"><img id="cover-img" src="covers/cover.png" alt="cover"></div>
         <div class="song-name" id="song-name">y Entertain hate</div>
@@ -121,12 +163,17 @@ canvas#snow { position:fixed; top:0; left:0; width:100%; height:100%; pointer-ev
         <div class="progress-container"><div class="progress" id="progress"></div></div>
       </div>
 
+      <!-- Discord icon below music player -->
+      <a href="https://discord.com/users/1322774994626936855" target="_blank" class="discord-link">
+        <img src="images/discord.png" alt="Discord">
+      </a>
+
     </div>
   </div>
 </main>
 
 <script>
-// Grey particle effect
+// Snow
 const canvas = document.getElementById('snow');
 const ctx = canvas.getContext('2d', {alpha:true});
 let particles = [];
@@ -143,7 +190,6 @@ function drawSnow(){ ctx.clearRect(0,0,canvas.width,canvas.height); ctx.fillStyl
 function updateSnow(){ for(let p of particles){ p.y += Math.pow(p.d,1.5)*0.2; p.x += Math.sin(p.sway)*0.1; if(p.y > window.innerHeight+10){ p.y=-10; p.x=Math.random()*window.innerWidth;} if(p.x<-20) p.x=window.innerWidth+20; if(p.x>window.innerWidth+20) p.x=-20;} }
 function animateSnow(){ drawSnow(); requestAnimationFrame(animateSnow); }
 animateSnow();
-window.addEventListener('resize', ()=>{ createParticles(Math.max(100,Math.floor(window.innerWidth/6))); });
 
 // Music
 const songs = [
@@ -223,10 +269,27 @@ intro.addEventListener('click', ()=>{
   setTimeout(()=>{
     intro.style.display='none';
     main.style.display='flex';
-    setTimeout(()=>{ main.style.opacity = 1; }, 50);
-    loadSong(songIndex);
+    setTimeout(()=>{ main.style.opacity = 1; typeBio(); loadSong(songIndex); }, 50);
   },1000);
 });
+
+// Typewriter bio for "psychopath"
+const bioElem = document.getElementById('bio');
+const bioText = "psychopath";
+let bioIndex = 0;
+let deleting = false;
+function typeBio() {
+  if(!deleting) {
+    bioElem.textContent = bioText.slice(0,bioIndex+1);
+    bioIndex++;
+    if(bioIndex === bioText.length){ deleting=true; setTimeout(typeBio,1000); return; }
+  } else {
+    bioElem.textContent = bioText.slice(0,bioIndex-1);
+    bioIndex--;
+    if(bioIndex===0){ deleting=false; setTimeout(typeBio,500); return; }
+  }
+  setTimeout(typeBio,deleting?80:120);
+}
 </script>
 
 </body>

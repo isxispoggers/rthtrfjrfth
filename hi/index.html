@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>@hi</title>
+<title>@vlogger</title>
 
 <!-- Professional font -->
 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
@@ -68,6 +68,29 @@ canvas#snow { position:fixed; top:0; left:0; width:100%; height:100%; pointer-ev
 }
 .username:hover + .uid, .uid:hover { opacity:1; transform:translateX(-50%) translateY(-4px); }
 
+/* Bio with slightly bigger cursor */
+.bio {
+  font-family:'Poppins', sans-serif;
+  font-weight:400;
+  font-size:13px;
+  color:var(--muted);
+  text-align:center;
+  white-space:nowrap;
+  overflow:hidden;
+  display:inline-block;
+  margin-top:2px;
+}
+.bio::after {
+  content: '|';
+  display:inline-block;
+  margin-left:2px;
+  font-weight:600;
+  color:var(--accent);
+  animation: blink 0.7s step-end infinite;
+  font-size:12px; /* slightly bigger cursor */
+}
+@keyframes blink { 50% { opacity:0; } }
+
 .music-player { display:flex; flex-direction:column; align-items:center; gap:14px; width:100%; margin-top:12px; }
 .cover { 
   width:150px; height:150px; border-radius:14px; overflow:hidden; 
@@ -87,6 +110,21 @@ canvas#snow { position:fixed; top:0; left:0; width:100%; height:100%; pointer-ev
 .progress-container { width:100%; height:6px; background:rgba(255,255,255,0.15); border-radius:3px; cursor:pointer; margin-top:6px; }
 .progress { width:0%; height:100%; background:var(--accent); border-radius:3px; transition:width .2s linear; }
 
+/* Discord icon bigger and animated */
+.discord-link {
+  display:inline-block;
+  margin-top:16px;
+}
+.discord-link img {
+  width:44px;  /* bigger */
+  height:44px; /* bigger */
+  transition: transform 0.3s ease, filter 0.3s ease;
+  cursor:pointer;
+}
+.discord-link img:hover {
+  transform: scale(1.25) rotate(10deg);
+  filter: drop-shadow(0 0 6px var(--accent));
+}
 </style>
 </head>
 <body>
@@ -104,6 +142,9 @@ canvas#snow { position:fixed; top:0; left:0; width:100%; height:100%; pointer-ev
         <div class="username">hi</div>
         <div class="uid">UID 6</div>
       </div>
+      
+      <!-- Bio -->
+      <div class="bio" id="bio"></div>
 
       <div class="music-player">
         <div class="cover"><img id="cover-img" src="covers/cover.png" alt="cover"></div>
@@ -118,12 +159,17 @@ canvas#snow { position:fixed; top:0; left:0; width:100%; height:100%; pointer-ev
         <div class="progress-container"><div class="progress" id="progress"></div></div>
       </div>
 
+      <!-- Discord Icon -->
+      <a href="https://discord.com/users/1322774994626936855" target="_blank" class="discord-link">
+        <img src="images/discord.png" alt="Discord">
+      </a>
+
     </div>
   </div>
 </main>
 
 <script>
-// Snow (subtle red)
+// Snow
 const canvas = document.getElementById('snow');
 const ctx = canvas.getContext('2d', {alpha:true});
 let particles = [];
@@ -141,7 +187,7 @@ function updateSnow(){ for(let p of particles){ p.y += Math.pow(p.d,1.5)*0.2; p.
 function animateSnow(){ drawSnow(); requestAnimationFrame(animateSnow); }
 animateSnow();
 
-// Music
+// Music Player
 const songs = [
   { src:'sounds/song1.mp3', cover:'covers/cover.png', name:'undercover', author:'jaydes' },
   { src:'sounds/song2.mp3', cover:'covers/cover.png', name:'witchybitchy', author:'jaydes' },
@@ -178,7 +224,6 @@ function loadSong(i){
 }
 
 function playPauseSong(){ if(audio.paused){ audio.play(); playBtn.textContent='⏸'; } else { audio.pause(); playBtn.textContent='▶'; } }
-
 function fadeToNext(next=true){
   let vol = audio.volume;
   const fadeOut = setInterval(()=>{
@@ -190,25 +235,37 @@ function fadeToNext(next=true){
     } else audio.volume = vol;
   },50);
 }
-
 playBtn.addEventListener('click', playPauseSong);
 nextBtn.addEventListener('click', ()=>fadeToNext(true));
 prevBtn.addEventListener('click', ()=>fadeToNext(false));
-
-audio.addEventListener('timeupdate', ()=>{
-  if(audio.duration) progress.style.width = (audio.currentTime/audio.duration*100)+'%';
-});
-
+audio.addEventListener('timeupdate', ()=>{ if(audio.duration) progress.style.width = (audio.currentTime/audio.duration*100)+'%'; });
 progress.parentElement.addEventListener('click', e=>{
   const rect=e.target.getBoundingClientRect();
   const x=e.clientX-rect.left;
   audio.currentTime = (x/rect.width)*audio.duration;
   progress.style.width = (x/rect.width*100)+'%';
 });
-
 audio.addEventListener('ended', ()=>fadeToNext(true));
 
-// Intro fade
+// Typewriter bio
+const bioElem = document.getElementById('bio');
+const bioText = "real vamp life";
+let bioIndex = 0;
+let deleting = false;
+function typeBio() {
+  if(!deleting) {
+    bioElem.textContent = bioText.slice(0,bioIndex+1);
+    bioIndex++;
+    if(bioIndex === bioText.length){ deleting=true; setTimeout(typeBio,1000); return; }
+  } else {
+    bioElem.textContent = bioText.slice(0,bioIndex-1);
+    bioIndex--;
+    if(bioIndex===0){ deleting=false; setTimeout(typeBio,500); return; }
+  }
+  setTimeout(typeBio,deleting?80:120);
+}
+
+// Intro fade & start bio
 const intro = document.getElementById('intro');
 const main = document.getElementById('main');
 let introClicked = false;
@@ -219,8 +276,7 @@ intro.addEventListener('click', ()=>{
   setTimeout(()=>{
     intro.style.display='none';
     main.style.display='flex';
-    setTimeout(()=>{ main.style.opacity = 1; }, 50);
-    loadSong(songIndex);
+    setTimeout(()=>{ main.style.opacity = 1; typeBio(); loadSong(songIndex); }, 50);
   },1000);
 });
 </script>

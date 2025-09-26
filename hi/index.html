@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>@hi</title>
+
+<!-- Professional font -->
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
+
+<style>
+:root {
+  --bg: #000;
+  --muted: #bdbdbd;
+  --uid-bg: #111;
+  --accent: #c62828;
+  --box-bg: rgba(30,0,0,0.6);
+}
+
+* { margin:0; padding:0; box-sizing:border-box; }
+body, html { 
+  height:100%; 
+  font-family:'Poppins', sans-serif; 
+  overflow:hidden; 
+  background:var(--bg); 
+  color:#fff; 
+  display:flex; 
+  justify-content:center; 
+  align-items:center; 
+}
+
+#intro { 
+  position:fixed; inset:0; display:flex; 
+  align-items:center; justify-content:center; 
+  cursor:pointer; background:#000; z-index:200; 
+  opacity:1; transition: opacity 1s ease; 
+}
+#intro h1 { font-size:22px; color:var(--accent); font-weight:600; animation:pulse 1.6s infinite; }
+@keyframes pulse {0%,100%{opacity:.45} 50%{opacity:1} }
+
+canvas#snow { position:fixed; top:0; left:0; width:100%; height:100%; pointer-events:none; z-index:0; }
+
+#main { display:none; position:relative; z-index:1; display:flex; flex-direction:column; align-items:center; justify-content:center; opacity:0; transition: opacity 1s ease; }
+
+.profile-box {
+  display:flex; flex-direction:column; align-items:center; gap:20px; width:280px;
+  background: var(--box-bg); backdrop-filter: blur(14px); border-radius:18px; padding:24px;
+  box-shadow:0 6px 20px rgba(0,0,0,0.7);
+}
+
+.avatar { 
+  width:90px; height:90px; border-radius:50%; overflow:hidden; 
+  background:#111; display:flex; justify-content:center; align-items:center; 
+  box-shadow:0 4px 12px rgba(0,0,0,0.6); 
+}
+.avatar img { width:100%; height:100%; object-fit:cover; }
+
+.meta { display:flex; flex-direction:column; align-items:center; gap:10px; width:100%; }
+
+.name-row { display:flex; flex-direction:column; align-items:center; gap:4px; position:relative; }
+.username { font-size:20px; font-weight:700; cursor:pointer; user-select:none; color:#fff; }
+.uid { 
+  font-family:'Poppins', sans-serif; font-weight:500; font-size:13px; 
+  padding:3px 8px; border-radius:6px; background:var(--uid-bg); color:#aaa; 
+  white-space:nowrap; text-align:center; opacity:0; 
+  transition: opacity .25s ease, transform .25s ease; 
+  position:absolute; bottom:120%; left:50%; transform:translateX(-50%);
+}
+.username:hover + .uid, .uid:hover { opacity:1; transform:translateX(-50%) translateY(-4px); }
+
+.music-player { display:flex; flex-direction:column; align-items:center; gap:14px; width:100%; margin-top:12px; }
+.cover { 
+  width:150px; height:150px; border-radius:14px; overflow:hidden; 
+  box-shadow:0 0 12px rgba(198,40,40,0.4); 
+  transition: transform .3s ease, box-shadow .3s ease; 
+}
+.cover img { width:100%; height:100%; object-fit:cover; }
+.cover:hover { transform:scale(1.03); box-shadow:0 0 18px rgba(198,40,40,0.6); }
+
+.song-name { font-size:15px; font-weight:600; color:#fff; text-align:center; transition:opacity .5s ease; }
+.song-author { font-size:13px; color:#aaa; text-align:center; transition:opacity .5s ease; }
+
+.audio-controls { display:flex; align-items:center; gap:16px; margin-top:6px; width:100%; justify-content:center; }
+.audio-controls button { background:none; border:none; color:#fff; cursor:pointer; font-size:18px; transition:transform .2s ease, color .2s ease; }
+.audio-controls button:hover { transform:scale(1.15); color:var(--accent); }
+
+.progress-container { width:100%; height:6px; background:rgba(255,255,255,0.15); border-radius:3px; cursor:pointer; margin-top:6px; }
+.progress { width:0%; height:100%; background:var(--accent); border-radius:3px; transition:width .2s linear; }
+
+</style>
+</head>
+<body>
+
+<div id="intro"><h1>click</h1></div>
+<canvas id="snow"></canvas>
+
+<main id="main">
+  <div class="profile-box">
+    <div class="avatar">
+      <img src="images/avatar.png" alt="avatar">
+    </div>
+    <div class="meta">
+      <div class="name-row">
+        <div class="username">hi</div>
+        <div class="uid">UID 6</div>
+      </div>
+
+      <div class="music-player">
+        <div class="cover"><img id="cover-img" src="covers/cover.png" alt="cover"></div>
+        <div class="song-name" id="song-name">undercover</div>
+        <div class="song-author" id="song-author">jaydes</div>
+        <audio id="audio" preload="auto"></audio>
+        <div class="audio-controls">
+          <button id="prev">⏮</button>
+          <button id="play">▶</button>
+          <button id="next">⏭</button>
+        </div>
+        <div class="progress-container"><div class="progress" id="progress"></div></div>
+      </div>
+
+    </div>
+  </div>
+</main>
+
+<script>
+// Snow (subtle red)
+const canvas = document.getElementById('snow');
+const ctx = canvas.getContext('2d', {alpha:true});
+let particles = [];
+function resize(){ const dpr = window.devicePixelRatio || 1; canvas.width = window.innerWidth*dpr; canvas.height = window.innerHeight*dpr; ctx.setTransform(dpr,0,0,dpr,0,0);}
+window.addEventListener('resize', resize); resize();
+function createParticles(count=120){ 
+  particles = []; 
+  for(let i=0;i<count;i++){
+    particles.push({x:Math.random()*window.innerWidth,y:Math.random()*window.innerHeight,r:Math.random()*1.2+0.5,d:Math.random()*0.4+0.1,sway:Math.random()*100});
+  }
+}
+createParticles(120);
+function drawSnow(){ ctx.clearRect(0,0,canvas.width,canvas.height); ctx.fillStyle='rgba(198,40,40,0.7)'; ctx.beginPath(); for(let p of particles){ ctx.moveTo(p.x,p.y); ctx.arc(p.x,p.y,p.r,0,Math.PI*2);} ctx.fill(); updateSnow(); }
+function updateSnow(){ for(let p of particles){ p.y += Math.pow(p.d,1.5)*0.2; p.x += Math.sin(p.sway)*0.1; if(p.y > window.innerHeight+10){ p.y=-10; p.x=Math.random()*window.innerWidth;} if(p.x<-20) p.x=window.innerWidth+20; if(p.x>window.innerWidth+20) p.x=-20;} }
+function animateSnow(){ drawSnow(); requestAnimationFrame(animateSnow); }
+animateSnow();
+
+// Music
+const songs = [
+  { src:'sounds/song1.mp3', cover:'covers/cover.png', name:'undercover', author:'jaydes' },
+  { src:'sounds/song2.mp3', cover:'covers/cover.png', name:'witchybitchy', author:'jaydes' },
+  { src:'sounds/song3.mp3', cover:'covers/cover.png', name:'laylow', author:'jaydes' },
+  { src:'sounds/song4.mp3', cover:'covers/cover.png', name:'draculea', author:'jaydes' }
+];
+let songIndex = 0;
+const audio = document.getElementById('audio');
+const playBtn = document.getElementById('play');
+const nextBtn = document.getElementById('next');
+const prevBtn = document.getElementById('prev');
+const coverImg = document.getElementById('cover-img');
+const songName = document.getElementById('song-name');
+const songAuthor = document.getElementById('song-author');
+const progress = document.getElementById('progress');
+
+function loadSong(i){
+  coverImg.style.opacity=0;
+  songName.style.opacity=0;
+  songAuthor.style.opacity=0;
+  audio.pause();
+  audio.src=songs[i].src;
+  audio.currentTime=0;
+  audio.volume=0.8;
+  setTimeout(()=>{
+    audio.play().then(()=>{ playBtn.textContent='⏸'; });
+    coverImg.src=songs[i].cover;
+    songName.textContent=songs[i].name;
+    songAuthor.textContent=songs[i].author;
+    coverImg.style.opacity=1;
+    songName.style.opacity=1;
+    songAuthor.style.opacity=1;
+  },400);
+}
+
+function playPauseSong(){ if(audio.paused){ audio.play(); playBtn.textContent='⏸'; } else { audio.pause(); playBtn.textContent='▶'; } }
+
+function fadeToNext(next=true){
+  let vol = audio.volume;
+  const fadeOut = setInterval(()=>{
+    vol -= 0.05;
+    if(vol <= 0){
+      clearInterval(fadeOut);
+      songIndex = next ? (songIndex+1)%songs.length : (songIndex-1+songs.length)%songs.length;
+      loadSong(songIndex);
+    } else audio.volume = vol;
+  },50);
+}
+
+playBtn.addEventListener('click', playPauseSong);
+nextBtn.addEventListener('click', ()=>fadeToNext(true));
+prevBtn.addEventListener('click', ()=>fadeToNext(false));
+
+audio.addEventListener('timeupdate', ()=>{
+  if(audio.duration) progress.style.width = (audio.currentTime/audio.duration*100)+'%';
+});
+
+progress.parentElement.addEventListener('click', e=>{
+  const rect=e.target.getBoundingClientRect();
+  const x=e.clientX-rect.left;
+  audio.currentTime = (x/rect.width)*audio.duration;
+  progress.style.width = (x/rect.width*100)+'%';
+});
+
+audio.addEventListener('ended', ()=>fadeToNext(true));
+
+// Intro fade
+const intro = document.getElementById('intro');
+const main = document.getElementById('main');
+let introClicked = false;
+intro.addEventListener('click', ()=>{
+  if(introClicked) return;
+  introClicked = true;
+  intro.style.opacity = 0;
+  setTimeout(()=>{
+    intro.style.display='none';
+    main.style.display='flex';
+    setTimeout(()=>{ main.style.opacity = 1; }, 50);
+    loadSong(songIndex);
+  },1000);
+});
+</script>
+
+</body>
+</html>

@@ -1,0 +1,561 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>@vampire</title>
+
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#050203;
+  --accent:#c71b1b;
+  --accent-soft: rgba(199,27,27,0.12);
+  --muted:#bdb6b8;
+  --panel:#0b0b0b;
+  --track:#333;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+body{
+  font-family:'Poppins',system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial;
+  height:100vh;
+  overflow:hidden;
+  color:#fff;
+  background-color:var(--bg);
+  background-image:url('images/blood.png');
+  background-position:center center;
+  background-repeat:no-repeat;
+  background-size:cover;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  -webkit-font-smoothing:antialiased;
+  -moz-osx-font-smoothing:grayscale;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* subtle overlay */
+.bg-overlay{position:fixed;inset:0;z-index:0;pointer-events:none;background:linear-gradient(180deg,rgba(10,0,0,0.12),rgba(0,0,0,0.45))}
+
+/* white flash */
+#flash-overlay{position:fixed;inset:0;background-color:white;z-index:100;opacity:0;pointer-events:none;transition:opacity .3s ease}
+
+/* intro */
+#intro{position:fixed;inset:0;display:block;z-index:10;pointer-events:auto}
+.opt{position:fixed;top:50%;transform:translateY(-50%);width:32vmin;max-width:460px;height:auto;cursor:pointer;user-select:none;z-index:12;transition:transform .18s ease;display:flex;flex-direction:column;align-items:center}
+.opt img{width:100%;height:auto;display:block;object-fit:contain}
+#btn-human{left:18vw}
+#btn-vampire{right:18vw}
+.opt .label{margin-top:10px;text-align:center;font-size:calc(11px + 0.6vmin);font-weight:700;color:#ffdede;text-shadow:0 2px 6px rgba(199,27,27,0.06)}
+.opt:hover{transform:translateY(-50%) translateY(-8px) scale(1.02)}
+.opt.disabled{cursor:not-allowed;opacity:.7;pointer-events:none}
+
+/* toast */
+.toast{position:fixed;z-index:30;left:50%;transform:translateX(-50%) translateY(-10px);top:14%;padding:12px 18px;background:linear-gradient(180deg,rgba(170,20,20,0.98),rgba(120,10,10,0.95));color:#fff;border-radius:10px;font-weight:700;box-shadow:0 8px 28px rgba(0,0,0,0.6);opacity:0;pointer-events:none;transition:opacity .25s ease,transform .25s ease}
+
+/* main panel */
+#main{display:none;position:relative;z-index:15;opacity:0;transition:opacity .9s ease;padding:28px;max-width:940px;width:92%}
+
+/* profile */
+.profile{
+  display:flex;
+  gap:16px;
+  align-items:center;
+  color:#fff;
+  background:linear-gradient(180deg,rgba(10,6,6,0.24),rgba(0,0,0,0.32));
+  border-radius:14px;
+  padding:18px;
+  box-shadow:0 20px 60px rgba(0,0,0,0.65);
+  border:1px solid rgba(255,255,255,0.03);
+}
+.profile img{
+  width:96px;
+  height:96px;
+  object-fit:cover;
+  border-radius:12px;
+  border:1px solid rgba(255,255,255,0.04);
+  box-shadow:0 8px 28px rgba(199,27,27,0.04);
+}
+
+/* right-side column (name + discord link) */
+.profile-right { display:flex; flex-direction:column; gap:10px; min-width:0; }
+
+/* name row */
+.name-row { display:flex; align-items:center; gap:12px; flex-wrap:nowrap; min-width:0; }
+
+/* name + tooltip */
+.name-wrap{position:relative;display:inline-block}
+.username{font-weight:700;font-size:20px;cursor:default;display:inline-block;padding:4px 6px;border-radius:6px;color:#fff}
+.uid-tooltip{
+  position:absolute;
+  left:50%;
+  transform:translateX(-50%) translateY(8px) scale(.98);
+  bottom:100%;
+  margin-bottom:12px;
+  background:var(--panel);
+  color:#fff;
+  padding:8px 10px;
+  font-weight:600;
+  font-size:13px;
+  border-radius:8px;
+  white-space:nowrap;
+  box-shadow:0 10px 32px rgba(0,0,0,0.6);
+  opacity:0;
+  pointer-events:none;
+  transition:transform .22s cubic-bezier(.2,.85,.2,1),opacity .18s ease;
+  z-index:30;
+  border:1px solid rgba(255,255,255,0.03);
+}
+.uid-tooltip::after{content:"";position:absolute;left:50%;transform:translateX(-50%);top:100%;width:10px;height:10px;background:var(--panel);border-left:1px solid rgba(255,255,255,0.02);border-top:1px solid rgba(255,255,255,0.02);transform-origin:center;transform:translateX(-50%) rotate(45deg)}
+.name-wrap:hover .uid-tooltip,.name-wrap:focus-within .uid-tooltip,.name-wrap.uid-visible .uid-tooltip{opacity:1;transform:translateX(-50%) translateY(0) scale(1);pointer-events:auto}
+.name-wrap a:focus + .uid-tooltip,.name-wrap button:focus + .uid-tooltip{opacity:1;transform:translateX(-50%) translateY(0) scale(1);pointer-events:auto}
+
+/* ------------- DISCORD ICON (raw, transparent, no bg) -------------- */
+/* Place under the name, raw PNG is shown as-is. No container, no bg. */
+.discord-link {
+  display:inline-flex;
+  align-items:center;
+  gap:8px;
+  margin-top:2px;
+  text-decoration:none;
+  color:inherit;
+  transform-origin:center;
+}
+.discord-link img {
+  width:44px;
+  height:44px;
+  display:block;
+  border-radius:0;          /* not rounded */
+  background: transparent !important; /* force transparent */
+  border: none !important;
+  padding: 0 !important;
+  box-shadow: none !important;
+  pointer-events:auto;
+  transition: transform .12s ease, filter .12s ease, box-shadow .12s ease;
+  -webkit-filter: none !important;
+  filter: none !important;
+  image-rendering: auto;
+  mix-blend-mode: normal;
+}
+
+/* On hover: subtle scale + red-ish drop shadow (not a rectangular bg) */
+.discord-link:hover img,
+.discord-link:focus img {
+  transform: scale(1.06);
+  /* drop-shadow keeps transparency - won't add a filled rectangle */
+  filter: drop-shadow(0 8px 22px rgba(199,27,27,0.10));
+  box-shadow: none !important;
+}
+
+/* If the raw PNG has a black background, CSS can't remove it.
+   The above ensures we don't add any backgrounds ourselves. */
+
+/* small screen tweaks */
+@media (max-width:520px){
+  .profile { padding:14px; gap:12px; }
+  .profile img{ width:80px; height:80px; }
+  .discord-link img{ width:36px; height:36px; }
+}
+
+/* -----------------------
+   MUSIC PLAYER (kept intact)
+   ----------------------- */
+.music-player {
+  margin-top:18px;
+  display:flex;
+  gap:18px;
+  align-items:center;
+  background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(0,0,0,0.24));
+  border-radius:14px;
+  padding:14px 16px;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.6);
+  border:1px solid rgba(255,255,255,0.03);
+  backdrop-filter: blur(6px);
+}
+.music-player .cover {
+  width:86px;
+  height:86px;
+  border-radius:14px;
+  object-fit:cover;
+  flex-shrink:0;
+  box-shadow: 0 10px 30px rgba(199,27,27,0.06), inset 0 1px 0 rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.04);
+}
+.music-info { flex:1; display:flex; flex-direction:column; gap:8px; min-width:0; }
+.song-title { font-weight:700; font-size:16px; color:#fff; line-height:1.1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.song-author { font-weight:500; font-size:13px; color:var(--muted) }
+.time-row { display:flex; gap:12px; align-items:center; justify-content:space-between; margin-top:6px; }
+.time-left, .time-right { font-size:12px; color:var(--muted); min-width:48px; text-align:center; }
+.progress-wrap { flex:1; margin: 0 10px; display:flex; align-items:center; gap:8px; min-width:0; }
+
+/* nicer range */
+input[type="range"]{
+  -webkit-appearance:none;
+  appearance:none;
+  width:100%;
+  height:8px;
+  border-radius:8px;
+  background: linear-gradient(90deg, var(--accent) 0%, var(--track) 0%);
+  cursor:pointer;
+  transition: background .12s linear;
+  outline:none;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.02);
+}
+input[type="range"]::-webkit-slider-runnable-track{ height:8px; border-radius:8px; }
+input[type="range"]::-moz-range-track{ height:8px; border-radius:8px; background:transparent; }
+input[type="range"]::-webkit-slider-thumb{
+  -webkit-appearance:none;
+  appearance:none;
+  width:14px; height:14px;
+  border-radius:50%;
+  background:var(--accent);
+  box-shadow: 0 6px 18px rgba(199,27,27,0.14);
+  margin-top: -3px;
+  border: 2px solid rgba(0,0,0,0.3);
+}
+input[type="range"]::-moz-range-thumb{ width:14px; height:14px; border-radius:50%; background:var(--accent); border:2px solid rgba(0,0,0,0.3); }
+
+/* controls */
+.controls { display:flex; gap:8px; align-items:center; margin-top:8px; }
+.ctrl-btn{ display:inline-grid; place-items:center; width:44px; height:36px; border-radius:9px; background: transparent; border: 1px solid rgba(255,255,255,0.03); color: var(--accent); cursor:pointer; transition: transform .12s ease, background .12s ease, box-shadow .12s ease; padding:0; }
+.ctrl-btn svg{ width:18px; height:18px; display:block; fill: currentColor; }
+.ctrl-btn:focus{ outline:none; box-shadow: 0 0 0 6px var(--accent-soft); }
+.ctrl-btn:active{ transform: translateY(1px) scale(.995); }
+.ctrl-btn:hover{ background: rgba(199,27,27,0.06); transform: translateY(-1px) scale(1.02); }
+.ctrl-btn.small { width:40px; height:36px; border-radius:8px; }
+button { -webkit-tap-highlight-color: transparent; }
+
+@media (max-width:520px){
+  .music-player{ padding:12px; gap:12px }
+  .music-player .cover{ width:72px; height:72px }
+  .ctrl-btn{ width:40px; height:34px }
+  .song-title{ font-size:15px }
+}
+</style>
+</head>
+<body>
+
+<div class="bg-overlay" aria-hidden="true"></div>
+<div id="flash-overlay"></div>
+
+<!-- INTRO -->
+<div id="intro" role="dialog" aria-label="Choose vampire or human">
+  <div id="btn-human" class="opt" role="button" tabindex="0" aria-label="Human (wrong)">
+    <img src="images/human.png" alt="Human">
+    <div class="label">Human</div>
+  </div>
+  <div id="btn-vampire" class="opt" role="button" tabindex="0" aria-label="Vampire (correct)">
+    <img src="images/vampire.png" alt="Vampire">
+    <div class="label">Vampire</div>
+  </div>
+</div>
+
+<div id="toast" class="toast" role="status" aria-live="polite">Incorrect, Try Again</div>
+
+<!-- MAIN -->
+<main id="main" aria-hidden="true">
+  <div class="profile">
+    <img id="main-avatar" src="images/vampire.png" alt="avatar">
+    <div class="profile-right">
+      <div class="name-row">
+        <div class="name-wrap" id="nameWrap">
+          <div class="username" id="username" tabindex="0">vampire</div>
+          <div class="uid-tooltip" id="uidTooltip">UID 9</div>
+        </div>
+      </div>
+
+      <!-- Discord icon (images/discord.png). clickable -->
+      <a class="discord-link" href="https://discord.com/users/1322774994626936855/" target="_blank" rel="noopener noreferrer" aria-label="Discord profile">
+        <img id="discordIcon" src="images/discord.png" alt="Discord profile">
+      </a>
+    </div>
+  </div>
+
+  <!-- MUSIC PLAYER -->
+  <div class="music-player" aria-label="Music player">
+    <img class="cover" src="covers/covers.png" alt="cover">
+    <div class="music-info">
+      <div class="song-title" title="seen a vampire 🧛‍♂️🧛‍♀️ in my dreams">seen a vampire 🧛‍♂️🧛‍♀️ in my dreams</div>
+      <div class="song-author">by imsg</div>
+
+      <div class="time-row" aria-hidden="false">
+        <div class="time-left" id="currentTime">0:00</div>
+
+        <div class="progress-wrap" style="flex:1;">
+          <input id="progress" type="range" min="0" max="100" value="0" aria-label="Song progress">
+        </div>
+
+        <div class="time-right" id="duration">0:00</div>
+      </div>
+
+      <div class="controls" role="group" aria-label="Playback controls">
+        <button class="ctrl-btn small" id="prev" aria-label="Previous">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6v12h2V6H6zm3.5 6 8.5 6V6l-8.5 6z"/></svg>
+        </button>
+
+        <button class="ctrl-btn" id="play" aria-label="Play" title="Play / Pause">
+          <svg id="playIcon" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg>
+        </button>
+
+        <button class="ctrl-btn small" id="next" aria-label="Next">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M16 6v12h2V6h-2zM5 6v12l8.5-6L5 6z"/></svg>
+        </button>
+      </div>
+    </div>
+  </div>
+</main>
+
+<script>
+/* --- UI elements --- */
+const btnHuman = document.getElementById('btn-human');
+const btnVamp = document.getElementById('btn-vampire');
+const toast = document.getElementById('toast');
+const intro = document.getElementById('intro');
+const main = document.getElementById('main');
+const usernameEl = document.getElementById('username');
+const nameWrap = document.getElementById('nameWrap');
+const uidTooltip = document.getElementById('uidTooltip');
+const flashOverlay = document.getElementById('flash-overlay');
+
+/* music elements */
+const audio = new Audio('sounds/song.mp3');
+audio.loop = true;
+audio.preload = 'auto';
+
+const playBtn = document.getElementById('play');
+const prevBtn = document.getElementById('prev');
+const nextBtn = document.getElementById('next');
+const progress = document.getElementById('progress');
+const currentTimeEl = document.getElementById('currentTime');
+const durationEl = document.getElementById('duration');
+const playIconSvg = document.getElementById('playIcon');
+
+/* set text */
+document.title = "@vampire";
+usernameEl.textContent = 'vampire';
+uidTooltip.textContent = 'UID 9';
+
+/* cooldown system */
+let cooldown = false;
+const COOLDOWN_TIME = 900;
+function startCooldown(){
+  cooldown = true;
+  btnHuman.classList.add('disabled');
+  btnVamp.classList.add('disabled');
+  setTimeout(()=>{ cooldown=false; btnHuman.classList.remove('disabled'); btnVamp.classList.remove('disabled'); }, COOLDOWN_TIME);
+}
+
+/* gunshot fallback */
+let gunshotSound = null;
+try {
+  gunshotSound = new Audio('sounds/gunshot.mp3');
+  gunshotSound.preload = 'auto';
+  gunshotSound.load();
+  gunshotSound.addEventListener('error', ()=> { gunshotSound = null; });
+} catch(e){ gunshotSound = null; }
+function playFallbackBeep(){
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.connect(gain); gain.connect(ctx.destination);
+    osc.frequency.value = 200; osc.type = 'sine';
+    gain.gain.setValueAtTime(0.3, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime+0.3);
+    osc.start(ctx.currentTime); osc.stop(ctx.currentTime+0.3);
+  } catch(e) {}
+}
+function playGunshot(){
+  if (gunshotSound) {
+    gunshotSound.currentTime = 0;
+    gunshotSound.play().catch(()=>playFallbackBeep());
+  } else playFallbackBeep();
+}
+
+/* toast display */
+let toastTimer = null;
+function showIncorrect(){
+  toast.style.opacity = 1;
+  toast.style.transform = 'translateX(-50%) translateY(0)';
+  toast.style.pointerEvents = 'auto';
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(()=>{ toast.style.opacity = 0; toast.style.transform = 'translateX(-50%) translateY(-10px)'; toast.style.pointerEvents = 'none'; }, 1400);
+}
+
+/* flash */
+function flashScreen(){ flashOverlay.style.opacity = '1'; setTimeout(()=> flashOverlay.style.opacity = '0', 300); }
+
+/* open main (after vampire) */
+let opened = false;
+function openMainFromVamp(){
+  if (opened) return;
+  opened = true;
+  intro.style.transition = 'opacity .8s ease, transform .8s ease';
+  intro.style.opacity = 0;
+  intro.style.transform = 'scale(.99)';
+  setTimeout(()=> {
+    intro.style.display = 'none';
+    main.style.display = 'block';
+    setTimeout(()=> {
+      main.style.opacity = 1;
+      main.setAttribute('aria-hidden','false');
+      usernameEl.textContent = 'vampire';
+      uidTooltip.textContent = 'UID 9';
+      startMusic(); // autoplay attempt
+    }, 40);
+  }, 780);
+}
+
+/* button handlers */
+btnHuman.addEventListener('click', (e) => {
+  if (cooldown) return;
+  startCooldown();
+  playGunshot();
+  flashScreen();
+  showIncorrect();
+});
+btnHuman.addEventListener('keydown', (e) => { if ((e.key === 'Enter' || e.key === ' ') && !cooldown) { e.preventDefault(); startCooldown(); playGunshot(); flashScreen(); showIncorrect(); } });
+
+btnVamp.addEventListener('click', (e) => { if (cooldown) return; startCooldown(); openMainFromVamp(); });
+btnVamp.addEventListener('keydown', (e) => { if ((e.key === 'Enter' || e.key === ' ') && !cooldown) { e.preventDefault(); startCooldown(); openMainFromVamp(); } });
+
+/* tooltip for touch: name tooltip (keeps old behaviour) */
+let tooltipVisible = false;
+usernameEl.addEventListener('click', (e) => {
+  if (window.matchMedia('(hover: none)').matches){
+    tooltipVisible = !tooltipVisible;
+    tooltipVisible ? nameWrap.classList.add('uid-visible') : nameWrap.classList.remove('uid-visible');
+  }
+});
+document.addEventListener('click', (e) => {
+  if (window.matchMedia('(hover: none)').matches && !nameWrap.contains(e.target)) {
+    tooltipVisible = false;
+    nameWrap.classList.remove('uid-visible');
+  }
+});
+usernameEl.addEventListener('focus', ()=>nameWrap.classList.add('uid-visible'));
+usernameEl.addEventListener('blur', ()=>nameWrap.classList.remove('uid-visible'));
+
+/* image fallback */
+function checkImages(){ document.querySelectorAll('img').forEach(img => img.addEventListener('error', ()=>{ img.style.background='transparent'; img.style.objectFit='contain'; img.src=''; })); }
+checkImages();
+
+/* -------------------------------
+   Music player: behavior & utils
+   ------------------------------- */
+
+/* format seconds to m:ss */
+function formatTime(s){
+  if (!s || isNaN(s)) return '0:00';
+  const m = Math.floor(s / 60);
+  const sec = Math.floor(s % 60).toString().padStart(2,'0');
+  return `${m}:${sec}`;
+}
+
+/* update progress slider background to show filled range */
+function updateProgressBackground(el, pct){
+  el.style.background = `linear-gradient(90deg, var(--accent) ${pct}%, var(--track) ${pct}%)`;
+}
+
+/* audio events */
+audio.addEventListener('loadedmetadata', () => {
+  durationEl.textContent = formatTime(audio.duration);
+  if (!isNaN(audio.duration)) {
+    progress.value = 0;
+    updateProgressBackground(progress, 0);
+  }
+});
+audio.addEventListener('timeupdate', () => {
+  if (!isNaN(audio.duration) && audio.duration > 0) {
+    const pct = (audio.currentTime / audio.duration) * 100;
+    progress.value = pct;
+    updateProgressBackground(progress, pct);
+    currentTimeEl.textContent = formatTime(audio.currentTime);
+  }
+});
+
+/* when song ends (loop already true), keep UI consistent */
+audio.addEventListener('ended', () => {
+  playIconSet(true);
+});
+
+/* play / pause UI toggle */
+function playIconSet(playing){
+  if (playing) {
+    // pause icon
+    playIconSvg.innerHTML = '<path d="M6 19h4V5H6v14zM14 5v14h4V5h-4z"/>';
+    playBtn.setAttribute('aria-pressed', 'true');
+  } else {
+    // play icon
+    playIconSvg.innerHTML = '<path d="M8 5v14l11-7z"/>';
+    playBtn.setAttribute('aria-pressed', 'false');
+  }
+}
+
+/* start / attempt autoplay */
+function startMusic(){
+  audio.play().then(()=> {
+    playIconSet(true);
+  }).catch((err)=> {
+    // autoplay blocked: show paused UI (user must click)
+    playIconSet(false);
+    console.log("Autoplay prevented by browser:", err);
+  });
+}
+
+/* control handlers */
+playBtn.addEventListener('click', () => {
+  if (audio.paused) {
+    audio.play().then(()=> playIconSet(true)).catch(e=> console.log('play blocked',e));
+  } else {
+    audio.pause();
+    playIconSet(false);
+  }
+});
+
+/* prev / next: for single-track behavior just restart (could be playlist later) */
+prevBtn.addEventListener('click', () => {
+  audio.currentTime = 0;
+});
+nextBtn.addEventListener('click', () => {
+  audio.currentTime = 0;
+});
+
+/* progress interaction */
+progress.addEventListener('input', (e) => {
+  const pct = Number(e.target.value);
+  updateProgressBackground(progress, pct);
+  if (!isNaN(audio.duration) && audio.duration > 0) {
+    currentTimeEl.textContent = formatTime((pct/100)*audio.duration);
+  }
+});
+progress.addEventListener('change', (e) => {
+  if (!isNaN(audio.duration) && audio.duration > 0) {
+    audio.currentTime = (Number(e.target.value)/100)*audio.duration;
+  }
+});
+
+/* prevent blue highlight on mobile after tap (extra safety) */
+document.querySelectorAll('button').forEach(b => b.addEventListener('touchstart',()=>{}));
+
+/* initialize UI state (if audio already loaded) */
+if (audio.readyState >= 1) {
+  durationEl.textContent = formatTime(audio.duration);
+}
+
+/* accessibility: space toggles play/pause when focus not in input */
+document.addEventListener('keydown', (e) => {
+  if (e.code === 'Space' && document.activeElement.tagName !== 'INPUT') {
+    e.preventDefault();
+    if (audio.paused) {
+      audio.play().then(()=> playIconSet(true)).catch(()=>{});
+    } else {
+      audio.pause();
+      playIconSet(false);
+    }
+  }
+});
+</script>
+</body>
+</html>

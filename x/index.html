@@ -1,0 +1,688 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>@x</title>
+
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#000000;
+  --panel:#0b0b0b;
+  --muted:#bdbdbd;
+  --track:#303030;
+  --accent:#ffffff;
+  --accent-soft: rgba(255,255,255,0.06);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+body{
+  font-family:'Poppins',system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial;
+  height:100vh;
+  overflow:hidden;
+  color:var(--accent);
+  background-color:var(--bg);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  -webkit-font-smoothing:antialiased;
+  -moz-osx-font-smoothing:grayscale;
+  -webkit-tap-highlight-color: transparent;
+  position:relative;
+}
+
+/* --- Background effects: grain + moving scratches + vignette --- */
+body::before{
+  /* fine grain / stars */
+  content:"";
+  position:fixed;
+  inset:0;
+  z-index:0;
+  pointer-events:none;
+  background-image:
+    radial-gradient(rgba(255,255,255,0.02) 1px, transparent 1px),
+    radial-gradient(rgba(255,255,255,0.01) 1px, transparent 1px);
+  background-size: 4px 4px, 12px 12px;
+  mix-blend-mode:overlay;
+  opacity:0.95;
+  animation:grainShift 12s linear infinite;
+}
+
+/* subtle moving scratches overlay */
+body::after{
+  content:"";
+  position:fixed;
+  inset:0;
+  z-index:1;
+  pointer-events:none;
+  background-image:
+    repeating-linear-gradient(120deg, rgba(255,255,255,0.015) 0 1px, transparent 1px 40px),
+    repeating-linear-gradient(60deg, rgba(255,255,255,0.01) 0 1px, transparent 1px 90px);
+  mix-blend-mode:overlay;
+  opacity:0.6;
+  animation: scratchMove 18s linear infinite;
+  filter: contrast(1.1) saturate(0.95);
+}
+
+/* particles canvas sits above the subtle scratches but below vignette */
+#particles{
+  position:fixed;
+  inset:0;
+  z-index:3; /* placed above body::after (z-index:1) */
+  pointer-events:none;
+  mix-blend-mode:screen;
+  opacity:0.9;
+}
+
+/* vignette for depth */
+.vignette{
+  position:fixed;
+  inset:0;
+  pointer-events:none;
+  z-index:4; /* raised so UI sits above it */
+  background: radial-gradient(ellipse at center, rgba(255,255,255,0.02) 0%, rgba(0,0,0,0.6) 55%, rgba(0,0,0,0.9) 100%);
+  mix-blend-mode:multiply;
+  opacity:1;
+}
+
+/* optional: if you want to use an uploaded screenshot as background,
+   place it at images/bg.png and uncomment the next CSS block.
+*/
+/*
+body {
+  background-image: url('images/bg.png');
+  background-size: cover;
+  background-position: center;
+}
+*/
+
+@keyframes grainShift{
+  0% { background-position: 0 0, 0 0; }
+  50% { background-position: 400px 300px, -200px -160px; }
+  100% { background-position: 0 0, 0 0; }
+}
+@keyframes scratchMove{
+  0% { background-position: 0 0, 20% 10%; transform: rotate(0.01deg); }
+  50% { background-position: 40% 20%, -30% 100%; transform: rotate(0.02deg); }
+  100% { background-position: 0 0, 20% 10%; transform: rotate(0.01deg); }
+}
+
+/* layout and UI (kept from previous version) */
+#intro{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;z-index:12;pointer-events:auto}
+
+
+/* removed introLabel styling since label was removed */
+
+/* hover lift */
+
+
+/* main panel - hidden initially */
+#main{display:none;position:relative;z-index:15;opacity:0;transition:opacity .8s ease;padding:28px;max-width:940px;width:92%}
+
+/* profile */
+.profile{
+  display:flex;
+  gap:16px;
+  align-items:center;
+  color:var(--accent);
+  background:linear-gradient(180deg,rgba(255,255,255,0.02),rgba(0,0,0,0.24));
+  border-radius:14px;
+  padding:18px;
+  box-shadow:0 20px 60px rgba(0,0,0,0.65);
+  border:1px solid rgba(255,255,255,0.04);
+}
+.profile img{
+  width:96px;
+  height:96px;
+  object-fit:cover;
+  border-radius:12px;
+  border:1px solid rgba(255,255,255,0.04);
+  box-shadow:0 8px 28px rgba(255,255,255,0.03);
+}
+
+/* right-side column (name + discord link) */
+.profile-right { display:flex; flex-direction:column; gap:10px; min-width:0; }
+
+/* name row */
+.name-row { display:flex; align-items:center; gap:12px; flex-wrap:nowrap; min-width:0; }
+
+/* name + tooltip */
+.name-wrap{position:relative;display:inline-block}
+.username{font-weight:700;font-size:20px;cursor:default;display:inline-block;padding:4px 6px;border-radius:6px;color:var(--accent)}
+.uid-tooltip{
+  position:absolute;
+  left:50%;
+  transform:translateX(-50%) translateY(8px) scale(.98);
+  bottom:100%;
+  margin-bottom:12px;
+  background:var(--panel);
+  color:var(--accent);
+  padding:8px 10px;
+  font-weight:600;
+  font-size:13px;
+  border-radius:8px;
+  white-space:nowrap;
+  box-shadow:0 10px 32px rgba(0,0,0,0.6);
+  opacity:0;
+  pointer-events:none;
+  transition:transform .22s cubic-bezier(.2,.85,.2,1),opacity .18s ease;
+  z-index:30;
+  border:1px solid rgba(255,255,255,0.03);
+}
+.uid-tooltip::after{content:"";position:absolute;left:50%;transform:translateX(-50%);top:100%;width:10px;height:10px;background:var(--panel);border-left:1px solid rgba(255,255,255,0.02);border-top:1px solid rgba(255,255,255,0.02);transform-origin:center;transform:translateX(-50%) rotate(45deg)}
+.name-wrap:hover .uid-tooltip,.name-wrap:focus-within .uid-tooltip,.name-wrap.uid-visible .uid-tooltip{opacity:1;transform:translateX(-50%) translateY(0) scale(1);pointer-events:auto}
+
+/* discord icon styling */
+.discord-link {
+  display:inline-flex;
+  align-items:center;
+  gap:8px;
+  margin-top:2px;
+  text-decoration:none;
+  color:inherit;
+  transform-origin:center;
+}
+.discord-link img {
+  width:44px;
+  height:44px;
+  display:block;
+  border-radius:0;
+  background: transparent !important;
+  border: none !important;
+  padding: 0 !important;
+  box-shadow: none !important;
+  pointer-events:auto;
+  transition: transform .12s ease, filter .12s ease, box-shadow .12s ease;
+}
+
+/* MUSIC PLAYER */
+.music-player {
+  margin-top:18px;
+  display:flex;
+  gap:18px;
+  align-items:center;
+  background: linear-gradient(180deg, rgba(255,255,255,0.01), rgba(0,0,0,0.24));
+  border-radius:14px;
+  padding:14px 16px;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.6);
+  border:1px solid rgba(255,255,255,0.03);
+  backdrop-filter: blur(6px);
+}
+.music-player .cover {
+  width:86px;
+  height:86px;
+  border-radius:14px;
+  object-fit:cover;
+  flex-shrink:0;
+  box-shadow: 0 10px 30px rgba(255,255,255,0.03), inset 0 1px 0 rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.04);
+}
+.music-info { flex:1; display:flex; flex-direction:column; gap:8px; min-width:0; }
+.song-title { font-weight:700; font-size:16px; color:var(--accent); line-height:1.1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.song-author { font-weight:500; font-size:13px; color:var(--muted) }
+.time-row { display:flex; gap:12px; align-items:center; justify-content:space-between; margin-top:6px; }
+.time-left, .time-right { font-size:12px; color:var(--muted); min-width:48px; text-align:center; }
+.progress-wrap { flex:1; margin: 0 10px; display:flex; align-items:center; gap:8px; min-width:0; }
+
+/* nicer range */
+input[type="range"]{
+  -webkit-appearance:none;
+  appearance:none;
+  width:100%;
+  height:8px;
+  border-radius:8px;
+  background: linear-gradient(90deg, var(--accent) 0%, var(--track) 0%);
+  cursor:pointer;
+  transition: background .12s linear;
+  outline:none;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.02);
+}
+input[type="range"]::-webkit-slider-runnable-track{ height:8px; border-radius:8px; }
+input[type="range"]::-moz-range-track{ height:8px; border-radius:8px; background:transparent; }
+input[type="range"]::-webkit-slider-thumb{
+  -webkit-appearance:none;
+  appearance:none;
+  width:14px; height:14px;
+  border-radius:50%;
+  background:var(--accent);
+  box-shadow: 0 6px 18px rgba(255,255,255,0.06);
+  margin-top: -3px;
+  border: 2px solid rgba(0,0,0,0.35);
+}
+input[type="range"]::-moz-range-thumb{ width:14px; height:14px; border-radius:50%; background:var(--accent); border:2px solid rgba(0,0,0,0.35); }
+
+/* controls */
+.controls { display:flex; gap:8px; align-items:center; margin-top:8px; }
+.ctrl-btn{ display:inline-grid; place-items:center; width:44px; height:36px; border-radius:9px; background: transparent; border: 1px solid rgba(255,255,255,0.03); color: var(--accent); cursor:pointer; transition: transform .12s ease, background .12s ease, box-shadow .12s ease; padding:0; }
+.ctrl-btn svg{ width:18px; height:18px; display:block; fill: currentColor; }
+.ctrl-btn:focus{ outline:none; box-shadow: 0 0 0 6px var(--accent-soft); }
+.ctrl-btn:active{ transform: translateY(1px) scale(.995); }
+.ctrl-btn:hover{ background: rgba(255,255,255,0.03); transform: translateY(-1px) scale(1.02); }
+.ctrl-btn.small { width:40px; height:36px; border-radius:8px; }
+button { -webkit-tap-highlight-color: transparent; }
+
+@media (max-width:520px){
+  .profile { padding:14px; gap:12px; }
+  .profile img{ width:80px; height:80px; }
+  .discord-link img{ width:36px; height:36px; }
+  .music-player{ padding:12px; gap:12px }
+  .music-player .cover{ width:72px; height:72px }
+  .ctrl-btn{ width:40px; height:34px }
+  .song-title{ font-size:15px }
+}
+
+#introLogoWrap{
+  width:36vmin;
+  max-width:420px;
+  cursor:pointer;
+  user-select:none;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  gap:14px;
+  transition:transform .22s ease,opacity .6s ease;
+  outline: none;
+}
+#introLogoWrap:focus {
+  outline: none;
+  box-shadow: none;
+}
+#introLogo{
+  width:100%;
+  height:auto;
+  display:block;
+  object-fit:contain;
+  filter:
+    drop-shadow(0 0 4px rgba(255,255,255,0.65))
+    drop-shadow(0 0 12px rgba(255,255,255,0.25))
+    drop-shadow(0 18px 40px rgba(0,0,0,0.7));
+  transition: filter .28s ease, transform .22s ease;
+  transform-origin:center;
+  animation: glowPulse 4s ease-in-out infinite;
+}
+#introLogoWrap:hover #introLogo,
+#introLogoWrap:focus-within #introLogo,
+#introLogoWrap:active #introLogo{
+  transform: translateY(-6px) scale(1.02);
+  animation: none;
+  filter:
+    drop-shadow(0 0 6px rgba(255,255,255,0.8))
+    drop-shadow(0 0 18px rgba(255,255,255,0.35))
+    drop-shadow(0 20px 44px rgba(0,0,0,0.72));
+}
+@keyframes glowPulse {
+  0%,100% {
+    filter:
+      drop-shadow(0 0 3px rgba(255,255,255,0.6))
+      drop-shadow(0 0 10px rgba(255,255,255,0.2))
+      drop-shadow(0 18px 40px rgba(0,0,0,0.7));
+  }
+  50% {
+    filter:
+      drop-shadow(0 0 6px rgba(255,255,255,0.75))
+      drop-shadow(0 0 14px rgba(255,255,255,0.3))
+      drop-shadow(0 18px 40px rgba(0,0,0,0.7));
+  }
+}
+
+</style>
+</head>
+<body>
+
+<!-- particles canvas for intro + main background -->
+<canvas id="particles" aria-hidden="true"></canvas>
+
+<!-- background vignette element (for depth) -->
+<div class="vignette" aria-hidden="true"></div>
+
+<!-- INTRO: single clickable X logo (uses images/x.png) -->
+<div id="intro" role="dialog" aria-label="Intro">
+  <div id="introLogoWrap" role="button" tabindex="0" aria-label="Open main page">
+    <img id="introLogo" src="images/x.png" alt="X logo">
+    <!-- removed the @x label as requested -->
+  </div>
+</div>
+
+<!-- MAIN -->
+<main id="main" aria-hidden="true">
+  <div class="profile">
+    <img id="main-avatar" src="images/avatar.png" alt="avatar">
+    <div class="profile-right">
+      <div class="name-row">
+        <div class="name-wrap" id="nameWrap">
+          <div class="username" id="username" tabindex="0">x</div>
+          <div class="uid-tooltip" id="uidTooltip">UID 10</div>
+        </div>
+      </div>
+
+      <!-- Discord icon (images/discord.png). clickable -->
+      <a class="discord-link" href="#" target="_blank" rel="noopener noreferrer" aria-label="Discord profile">
+        <img id="discordIcon" src="images/discord.png" alt="Discord profile">
+      </a>
+    </div>
+  </div>
+
+  <!-- MUSIC PLAYER -->
+  <div class="music-player" aria-label="Music player">
+    <img class="cover" src="covers/alone.png" alt="cover">
+    <div class="music-info">
+      <div class="song-title" title="alone">alone</div>
+      <div class="song-author">by Jaydes</div>
+
+      <div class="time-row" aria-hidden="false">
+        <div class="time-left" id="currentTime">0:00</div>
+
+        <div class="progress-wrap" style="flex:1;">
+          <input id="progress" type="range" min="0" max="100" value="0" aria-label="Song progress">
+        </div>
+
+        <div class="time-right" id="duration">0:00</div>
+      </div>
+
+      <div class="controls" role="group" aria-label="Playback controls">
+        <button class="ctrl-btn small" id="prev" aria-label="Previous">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6v12h2V6H6zm3.5 6 8.5 6V6l-8.5 6z"/></svg>
+        </button>
+
+        <button class="ctrl-btn" id="play" aria-label="Play" title="Play / Pause">
+          <svg id="playIcon" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg>
+        </button>
+
+        <button class="ctrl-btn small" id="next" aria-label="Next">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M16 6v12h2V6h-2zM5 6v12l8.5-6L5 6z"/></svg>
+        </button>
+      </div>
+    </div>
+  </div>
+</main>
+
+<script>
+/* --- Particles background (lightweight, no deps) --- */
+(function(){
+  const canvas = document.getElementById('particles');
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+  let w = canvas.width = innerWidth;
+  let h = canvas.height = innerHeight;
+
+  const prefersReduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const PARTICLE_DENSITY = 0.0009; // particles per px^2 (tweak this)
+  const PARTICLE_MIN_R = 0.6;
+  const PARTICLE_MAX_R = 2.2;
+  const LINK_DISTANCE = 120; // px
+  let particles = [];
+
+  function rand(min, max){ return Math.random()*(max-min)+min; }
+
+  function createParticles(){
+    particles = [];
+    const area = w * h;
+    const count = Math.max(8, Math.round(area * PARTICLE_DENSITY));
+    for(let i=0;i<count;i++){
+      particles.push({
+        x: Math.random()*w,
+        y: Math.random()*h,
+        vx: (Math.random()-0.5) * (prefersReduced ? 0.2 : 0.8),
+        vy: (Math.random()-0.5) * (prefersReduced ? 0.2 : 0.8),
+        r: rand(PARTICLE_MIN_R, PARTICLE_MAX_R),
+        alpha: rand(0.06, 0.22)
+      });
+    }
+  }
+
+  function resize(){
+    w = canvas.width = innerWidth;
+    h = canvas.height = innerHeight;
+    createParticles();
+  }
+  addEventListener('resize', resize);
+
+  function step(){
+    ctx.clearRect(0,0,w,h);
+
+    // draw links
+    for(let i=0;i<particles.length;i++){
+      const p = particles[i];
+      for(let j=i+1;j<particles.length;j++){
+        const q = particles[j];
+        const dx = p.x - q.x;
+        const dy = p.y - q.y;
+        const d2 = dx*dx + dy*dy;
+        if (d2 < LINK_DISTANCE * LINK_DISTANCE){
+          const d = Math.sqrt(d2);
+          const t = 1 - (d / LINK_DISTANCE);
+          ctx.beginPath();
+          ctx.moveTo(p.x, p.y);
+          ctx.lineTo(q.x, q.y);
+          ctx.strokeStyle = `rgba(255,255,255,${(0.025 * t)})`;
+          ctx.lineWidth = 1 * t;
+          ctx.stroke();
+        }
+      }
+    }
+
+    // draw particles
+    for(const p of particles){
+      // motion
+      p.x += p.vx;
+      p.y += p.vy;
+
+      // wrap
+      if (p.x < -10) p.x = w + 10;
+      if (p.x > w + 10) p.x = -10;
+      if (p.y < -10) p.y = h + 10;
+      if (p.y > h + 10) p.y = -10;
+
+      // draw
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.r, 0, Math.PI*2);
+      ctx.fillStyle = `rgba(255,255,255,${p.alpha})`;
+      ctx.fill();
+    }
+
+    if (!prefersReduced) requestAnimationFrame(step);
+  }
+
+  // start
+  resize();
+  if (!prefersReduced) requestAnimationFrame(step);
+  // if reduced motion prefer static draw
+  if (prefersReduced){
+    // one-time draw
+    ctx.clearRect(0,0,w,h);
+    for(const p of particles){
+      ctx.beginPath(); ctx.arc(p.x,p.y,p.r,0,Math.PI*2);
+      ctx.fillStyle = `rgba(255,255,255,${p.alpha})`;
+      ctx.fill();
+    }
+  }
+})();
+</script>
+
+<script>
+/* --- UI elements --- */
+const intro = document.getElementById('intro');
+const introLogoWrap = document.getElementById('introLogoWrap');
+const main = document.getElementById('main');
+const usernameEl = document.getElementById('username');
+const nameWrap = document.getElementById('nameWrap');
+const uidTooltip = document.getElementById('uidTooltip');
+
+/* audio (alone by Jaydes) */
+const audio = new Audio('sounds/alone.mp3');
+audio.loop = true;
+audio.preload = 'auto';
+
+const playBtn = document.getElementById('play');
+const prevBtn = document.getElementById('prev');
+const nextBtn = document.getElementById('next');
+const progress = document.getElementById('progress');
+const currentTimeEl = document.getElementById('currentTime');
+const durationEl = document.getElementById('duration');
+const playIconSvg = document.getElementById('playIcon');
+
+/* set text + title */
+document.title = "@x";
+usernameEl.textContent = 'x';
+uidTooltip.textContent = 'UID 10';
+
+/* open main from intro X logo with fade-only transition (no flash) */
+let opened = false;
+function openMainFromX(){
+  if (opened) return;
+  opened = true;
+
+  // fade out intro
+  intro.style.transition = 'opacity .6s ease, transform .6s ease';
+  intro.style.opacity = 0;
+  intro.style.transform = 'scale(.98) translateY(8px)';
+
+  // after fade completes, hide intro and show main with fade-in
+  setTimeout(()=> {
+    intro.style.display = 'none';
+    main.style.display = 'block';
+    // small delay to trigger CSS transition
+    setTimeout(()=> {
+      main.style.opacity = 1;
+      main.setAttribute('aria-hidden','false');
+      startMusic(); // attempt autoplay (may be blocked until user interacts)
+    }, 60);
+  }, 620);
+}
+
+/* make intro clickable + keyboard accessible */
+introLogoWrap.addEventListener('click', (e) => openMainFromX());
+introLogoWrap.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openMainFromX(); } });
+
+/* tooltip for touch: name tooltip (keeps behavior) */
+let tooltipVisible = false;
+usernameEl.addEventListener('click', (e) => {
+  if (window.matchMedia('(hover: none)').matches){
+    tooltipVisible = !tooltipVisible;
+    tooltipVisible ? nameWrap.classList.add('uid-visible') : nameWrap.classList.remove('uid-visible');
+  }
+});
+document.addEventListener('click', (e) => {
+  if (window.matchMedia('(hover: none)').matches && !nameWrap.contains(e.target)) {
+    tooltipVisible = false;
+    nameWrap.classList.remove('uid-visible');
+  }
+});
+usernameEl.addEventListener('focus', ()=>nameWrap.classList.add('uid-visible'));
+usernameEl.addEventListener('blur', ()=>nameWrap.classList.remove('uid-visible'));
+
+/* -------------------------------
+   Music player: behavior & utils
+   ------------------------------- */
+
+/* format seconds to m:ss */
+function formatTime(s){
+  if (!s || isNaN(s)) return '0:00';
+  const m = Math.floor(s / 60);
+  const sec = Math.floor(s % 60).toString().padStart(2,'0');
+  return `${m}:${sec}`;
+}
+
+/* update progress slider background to show filled range */
+function updateProgressBackground(el, pct){
+  el.style.background = `linear-gradient(90deg, var(--accent) ${pct}%, var(--track) ${pct}%)`;
+}
+
+/* audio events */
+audio.addEventListener('loadedmetadata', () => {
+  durationEl.textContent = formatTime(audio.duration);
+  if (!isNaN(audio.duration)) {
+    progress.value = 0;
+    updateProgressBackground(progress, 0);
+  }
+});
+audio.addEventListener('timeupdate', () => {
+  if (!isNaN(audio.duration) && audio.duration > 0) {
+    const pct = (audio.currentTime / audio.duration) * 100;
+    progress.value = pct;
+    updateProgressBackground(progress, pct);
+    currentTimeEl.textContent = formatTime(audio.currentTime);
+  }
+});
+
+/* when song ends (loop true), keep UI consistent */
+audio.addEventListener('ended', () => {
+  playIconSet(true);
+});
+
+/* play / pause UI toggle */
+function playIconSet(playing){
+  if (playing) {
+    // pause icon
+    playIconSvg.innerHTML = '<path d="M6 19h4V5H6v14zM14 5v14h4V5h-4z"/>';
+    playBtn.setAttribute('aria-pressed', 'true');
+  } else {
+    // play icon
+    playIconSvg.innerHTML = '<path d="M8 5v14l11-7z"/>';
+    playBtn.setAttribute('aria-pressed', 'false');
+  }
+}
+
+/* start / attempt autoplay */
+function startMusic(){
+  audio.play().then(()=> {
+    playIconSet(true);
+  }).catch((err)=> {
+    // autoplay blocked: show paused UI (user must click)
+    playIconSet(false);
+    console.log("Autoplay prevented by browser:", err);
+  });
+}
+
+/* control handlers */
+playBtn.addEventListener('click', () => {
+  if (audio.paused) {
+    audio.play().then(()=> playIconSet(true)).catch(e=> console.log('play blocked',e));
+  } else {
+    audio.pause();
+    playIconSet(false);
+  }
+});
+
+/* prev / next: restart for single-track behavior */
+prevBtn.addEventListener('click', () => {
+  audio.currentTime = 0;
+});
+nextBtn.addEventListener('click', () => {
+  audio.currentTime = 0;
+});
+
+/* progress interaction */
+progress.addEventListener('input', (e) => {
+  const pct = Number(e.target.value);
+  updateProgressBackground(progress, pct);
+  if (!isNaN(audio.duration) && audio.duration > 0) {
+    currentTimeEl.textContent = formatTime((pct/100)*audio.duration);
+  }
+});
+progress.addEventListener('change', (e) => {
+  if (!isNaN(audio.duration) && audio.duration > 0) {
+    audio.currentTime = (Number(e.target.value)/100)*audio.duration;
+  }
+});
+
+/* accessibility: space toggles play/pause when focus not in input */
+document.addEventListener('keydown', (e) => {
+  if (e.code === 'Space' && document.activeElement.tagName !== 'INPUT') {
+    e.preventDefault();
+    if (audio.paused) {
+      audio.play().then(()=> playIconSet(true)).catch(()=>{});
+    } else {
+      audio.pause();
+      playIconSet(false);
+    }
+  }
+});
+
+/* quick image error fallback */
+function checkImages(){ document.querySelectorAll('img').forEach(img => img.addEventListener('error', ()=>{ img.style.background='transparent'; img.style.objectFit='contain'; img.src=''; })); }
+checkImages();
+</script>
+</body>
+</html>
